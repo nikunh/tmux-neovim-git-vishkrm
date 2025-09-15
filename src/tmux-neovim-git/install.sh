@@ -1,15 +1,6 @@
 #!/bin/bash
 set -e
 
-# Debug: Show what files are present
-echo "=== DEBUG: Files in current directory ==="
-ls -la
-echo "=== DEBUG: Current working directory ==="
-pwd
-echo "=== DEBUG: Script directory ==="
-echo "$(dirname "$0")"
-echo "========================================="
-
 # Function to get runtime user from environment or current context
 get_runtime_user() {
     # Try environment variables first (from docker-compose)
@@ -146,12 +137,12 @@ mkdir -p "${TARGET_HOME}/.config/nvim/lua/plugins" || true
 mkdir -p "${TARGET_HOME}/.config/nvim/lua/config" || true
 
 # Copy all Lua plugin/config files to correct locations
-cp -r "$(dirname "$0")/../lua/plugins/"* "${TARGET_HOME}/.config/nvim/lua/plugins/" 2>/dev/null || true
-cp -r "$(dirname "$0")/../lua/config/"* "${TARGET_HOME}/.config/nvim/lua/config/" 2>/dev/null || true
-cp -n "$(dirname "$0")/../lua/init.lua" "${TARGET_HOME}/.config/nvim/lua/" 2>/dev/null || true
+cp -r "$(dirname "$0")/lua/plugins/"* "${TARGET_HOME}/.config/nvim/lua/plugins/" 2>/dev/null || true
+cp -r "$(dirname "$0")/lua/config/"* "${TARGET_HOME}/.config/nvim/lua/config/" 2>/dev/null || true
+cp -n "$(dirname "$0")/lua/init.lua" "${TARGET_HOME}/.config/nvim/lua/" 2>/dev/null || true
 
 # Copy .tmux.conf to home directory from tmux folder
-cp -n "$(dirname "$0")/../tmux/.tmux.conf" "${TARGET_HOME}/.tmux.conf" 2>/dev/null || true
+cp -n "$(dirname "$0")/tmux/.tmux.conf" "${TARGET_HOME}/.tmux.conf" 2>/dev/null || true
 
 # Fix permissions for runtime user (prevents LazyVim permission errors)
 echo "Fixing permissions for runtime user '${RUNTIME_USER}' configuration..."
