@@ -1,6 +1,15 @@
 #!/bin/bash
 set -e
 
+# Debug: Show what files are present
+echo "=== DEBUG: Files in current directory ==="
+ls -la
+echo "=== DEBUG: Current working directory ==="
+pwd
+echo "=== DEBUG: Script directory ==="
+echo "$(dirname "$0")"
+echo "========================================="
+
 # Function to get runtime user from environment or current context
 get_runtime_user() {
     # Try environment variables first (from docker-compose)

@@ -1,6 +1,6 @@
 {
   "id": "tmux-neovim-git",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "name": "Tmux, Neovim, Git, SSH Setup",
   "description": "Configures tmux, Neovim, Git, SSH keys, and NerdFonts for the user.",
   "options": {},
