@@ -34,12 +34,25 @@ get_runtime_user() {
 
 # Install newer Neovim version (LazyVim requires >= 0.8.0)
 echo "Installing newer Neovim version for LazyVim compatibility..."
-# Install software-properties-common for add-apt-repository command
+
+# Architecture detection for Neovim AppImage
+if [ "$(uname -m)" = "x86_64" ]; then
+    NVIM_ARCH=""
+else
+    NVIM_ARCH=".aarch64"
+fi
+
+# Install Neovim via AppImage extraction (more reliable than PPA)
 apt-get update
-apt-get install -y software-properties-common
-add-apt-repository -y ppa:neovim-ppa/unstable
-apt-get update
-apt-get install -y neovim
+apt-get install -y curl fuse libfuse2
+cd /tmp
+curl -LO "https://github.com/neovim/neovim/releases/latest/download/nvim${NVIM_ARCH}.appimage"
+chmod u+x nvim${NVIM_ARCH}.appimage
+./nvim${NVIM_ARCH}.appimage --appimage-extract
+mv squashfs-root /opt/nvim
+ln -sf /opt/nvim/AppRun /usr/local/bin/nvim
+ln -sf /usr/local/bin/nvim /usr/local/bin/vim
+rm nvim${NVIM_ARCH}.appimage
 
 # SSH setup
 if [ ! -d ~/.ssh ]; then
