@@ -1,6 +1,21 @@
 #!/bin/bash
 set -e
 
+# Function to execute command with sudo only if needed
+run_with_sudo() {
+    if [ "$(id -u)" = "0" ]; then
+        # Running as root, no sudo needed
+        "$@"
+    elif command -v sudo >/dev/null 2>&1; then
+        # Not root and sudo available
+        sudo "$@"
+    else
+        # Not root and no sudo available - try without sudo (might fail)
+        echo "Warning: Not running as root and sudo not available. Trying without sudo..." >&2
+        "$@"
+    fi
+}
+
 # Function to get runtime user from environment or current context
 get_runtime_user() {
     # Try environment variables first (from docker-compose)
@@ -60,10 +75,10 @@ if [ ! -d ~/.ssh ]; then
   mkdir -p ~/.ssh
 fi
 RUNTIME_USER=$(get_runtime_user)
-sudo chown -R "${RUNTIME_USER}:${RUNTIME_USER}" "$HOME/.ssh"
-sudo find "$HOME/.ssh" -type d -exec chmod 700 {} \;
-sudo find "$HOME/.ssh" -type f -exec chmod 600 {} \;
-sudo find "$HOME/.ssh" -name "*.pub" -type f -exec chmod 644 {} \;
+run_with_sudo chown -R "${RUNTIME_USER}:${RUNTIME_USER}" "$HOME/.ssh"
+run_with_sudo find "$HOME/.ssh" -type d -exec chmod 700 {} \;
+run_with_sudo find "$HOME/.ssh" -type f -exec chmod 600 {} \;
+run_with_sudo find "$HOME/.ssh" -name "*.pub" -type f -exec chmod 644 {} \;
 if ! grep -q "github.com" ~/.ssh/known_hosts; then
   ssh-keyscan github.com >> ~/.ssh/known_hosts
 fi
