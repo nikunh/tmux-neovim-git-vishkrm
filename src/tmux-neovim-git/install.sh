@@ -34,6 +34,7 @@ get_runtime_user() {
 
 # Install newer Neovim version (LazyVim requires >= 0.8.0)
 echo "Installing newer Neovim version for LazyVim compatibility..."
+echo "Version 0.0.9 with fixed line endings and ARM64 support"
 
 # Architecture detection for Neovim AppImage
 if [ "$(uname -m)" = "x86_64" ]; then
