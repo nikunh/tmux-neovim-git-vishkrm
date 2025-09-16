@@ -1,8 +1,8 @@
 {
   "id": "tmux-neovim-git",
-  "version": "0.0.14",
+  "version": "0.0.15",
   "name": "Tmux, Neovim, Git, SSH Setup",
-  "description": "Configures tmux, Neovim, Git, SSH keys, and NerdFonts for the user. Fixed sudo command not found error during DevContainer build.",
+  "description": "Configures tmux, Neovim, Git, SSH keys, and NerdFonts for the user. Added tmux package installation to fix missing tmux binary.",
   "options": {},
   "installsAfter": ["ghcr.io/devcontainers/features/common-utils", "ghcr.io/nikunh/002-user-setup-vishkrm/002-user-setup"]
 }

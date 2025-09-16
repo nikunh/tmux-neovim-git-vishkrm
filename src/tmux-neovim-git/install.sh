@@ -58,14 +58,14 @@ else
     NVIM_APPIMAGE="nvim-linux-arm64.appimage"
 fi
 
-# Install Neovim via AppImage extraction (more reliable than PPA)
+# Install tmux and Neovim dependencies
 # Wait for apt lock and refresh package database
 while fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
     echo "Waiting for apt lock..."
     sleep 1
 done
 DEBIAN_FRONTEND=noninteractive apt-get update -qq
-DEBIAN_FRONTEND=noninteractive apt-get install -y curl fuse libfuse2
+DEBIAN_FRONTEND=noninteractive apt-get install -y tmux curl fuse libfuse2
 cd /tmp
 curl -LO "https://github.com/neovim/neovim/releases/latest/download/${NVIM_APPIMAGE}"
 chmod u+x "${NVIM_APPIMAGE}"
