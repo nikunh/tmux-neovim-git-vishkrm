@@ -138,9 +138,32 @@ mkdir -p "${TARGET_HOME}/.config/nvim/lua/plugins" || true
 mkdir -p "${TARGET_HOME}/.config/nvim/lua/config" || true
 
 # Copy all Lua plugin/config files to correct locations
-cp -r "$(dirname "$0")/lua/plugins/"* "${TARGET_HOME}/.config/nvim/lua/plugins/" 2>/dev/null || true
-cp -r "$(dirname "$0")/lua/config/"* "${TARGET_HOME}/.config/nvim/lua/config/" 2>/dev/null || true
-cp -n "$(dirname "$0")/lua/init.lua" "${TARGET_HOME}/.config/nvim/lua/" 2>/dev/null || true
+echo "Copying nvim plugins and configs..."
+SOURCE_DIR="$(dirname "$0")"
+echo "Source directory: ${SOURCE_DIR}"
+echo "Target home: ${TARGET_HOME}"
+
+# Copy plugins with verbose output
+if [ -d "${SOURCE_DIR}/lua/plugins" ]; then
+    echo "Copying plugins from ${SOURCE_DIR}/lua/plugins to ${TARGET_HOME}/.config/nvim/lua/plugins/"
+    cp -v "${SOURCE_DIR}/lua/plugins/"*.lua "${TARGET_HOME}/.config/nvim/lua/plugins/" || echo "Warning: Failed to copy some plugin files"
+else
+    echo "Warning: Plugin source directory not found: ${SOURCE_DIR}/lua/plugins"
+fi
+
+# Copy config files
+if [ -d "${SOURCE_DIR}/lua/config" ]; then
+    echo "Copying configs from ${SOURCE_DIR}/lua/config"
+    cp -v "${SOURCE_DIR}/lua/config/"*.lua "${TARGET_HOME}/.config/nvim/lua/config/" || echo "Warning: Failed to copy some config files"
+else
+    echo "Warning: Config source directory not found: ${SOURCE_DIR}/lua/config"
+fi
+
+# Copy init.lua
+if [ -f "${SOURCE_DIR}/lua/init.lua" ]; then
+    echo "Copying init.lua"
+    cp -v "${SOURCE_DIR}/lua/init.lua" "${TARGET_HOME}/.config/nvim/lua/" || echo "Warning: Failed to copy init.lua"
+fi
 
 # Copy .tmux.conf to home directory from tmux folder
 cp -n "$(dirname "$0")/tmux/.tmux.conf" "${TARGET_HOME}/.tmux.conf" 2>/dev/null || true
