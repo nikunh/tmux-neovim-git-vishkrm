@@ -37,22 +37,22 @@ echo "Installing newer Neovim version for LazyVim compatibility..."
 
 # Architecture detection for Neovim AppImage
 if [ "$(uname -m)" = "x86_64" ]; then
-    NVIM_ARCH=""
+    NVIM_APPIMAGE="nvim.appimage"
 else
-    NVIM_ARCH=".aarch64"
+    NVIM_APPIMAGE="nvim-linux-arm64.appimage"
 fi
 
 # Install Neovim via AppImage extraction (more reliable than PPA)
 apt-get update
 apt-get install -y curl fuse libfuse2
 cd /tmp
-curl -LO "https://github.com/neovim/neovim/releases/latest/download/nvim${NVIM_ARCH}.appimage"
-chmod u+x nvim${NVIM_ARCH}.appimage
-./nvim${NVIM_ARCH}.appimage --appimage-extract
+curl -LO "https://github.com/neovim/neovim/releases/latest/download/${NVIM_APPIMAGE}"
+chmod u+x "${NVIM_APPIMAGE}"
+./"${NVIM_APPIMAGE}" --appimage-extract
 mv squashfs-root /opt/nvim
 ln -sf /opt/nvim/AppRun /usr/local/bin/nvim
 ln -sf /usr/local/bin/nvim /usr/local/bin/vim
-rm nvim${NVIM_ARCH}.appimage
+rm "${NVIM_APPIMAGE}"
 
 # SSH setup
 if [ ! -d ~/.ssh ]; then
