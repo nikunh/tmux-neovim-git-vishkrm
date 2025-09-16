@@ -143,26 +143,45 @@ SOURCE_DIR="$(dirname "$0")"
 echo "Source directory: ${SOURCE_DIR}"
 echo "Target home: ${TARGET_HOME}"
 
-# Copy plugins with verbose output
-if [ -d "${SOURCE_DIR}/lua/plugins" ]; then
+# Find the correct build features directory during container build
+BUILD_FEATURES_DIR=""
+for dir in /tmp/build-features/*/lua/plugins; do
+    if [ -d "$dir" ]; then
+        BUILD_FEATURES_DIR="$(dirname "$(dirname "$dir")")"
+        echo "Found build features directory: ${BUILD_FEATURES_DIR}"
+        break
+    fi
+done
+
+# Copy plugins with verbose output - try build features dir first, then source dir
+if [ -n "${BUILD_FEATURES_DIR}" ] && [ -d "${BUILD_FEATURES_DIR}/lua/plugins" ]; then
+    echo "Copying plugins from ${BUILD_FEATURES_DIR}/lua/plugins to ${TARGET_HOME}/.config/nvim/lua/plugins/"
+    cp -v "${BUILD_FEATURES_DIR}/lua/plugins/"*.lua "${TARGET_HOME}/.config/nvim/lua/plugins/" || echo "Warning: Failed to copy some plugin files from build features"
+elif [ -d "${SOURCE_DIR}/lua/plugins" ]; then
     echo "Copying plugins from ${SOURCE_DIR}/lua/plugins to ${TARGET_HOME}/.config/nvim/lua/plugins/"
-    cp -v "${SOURCE_DIR}/lua/plugins/"*.lua "${TARGET_HOME}/.config/nvim/lua/plugins/" || echo "Warning: Failed to copy some plugin files"
+    cp -v "${SOURCE_DIR}/lua/plugins/"*.lua "${TARGET_HOME}/.config/nvim/lua/plugins/" || echo "Warning: Failed to copy some plugin files from source"
 else
-    echo "Warning: Plugin source directory not found: ${SOURCE_DIR}/lua/plugins"
+    echo "Warning: Plugin source directory not found in either ${BUILD_FEATURES_DIR}/lua/plugins or ${SOURCE_DIR}/lua/plugins"
 fi
 
 # Copy config files
-if [ -d "${SOURCE_DIR}/lua/config" ]; then
+if [ -n "${BUILD_FEATURES_DIR}" ] && [ -d "${BUILD_FEATURES_DIR}/lua/config" ]; then
+    echo "Copying configs from ${BUILD_FEATURES_DIR}/lua/config"
+    cp -v "${BUILD_FEATURES_DIR}/lua/config/"*.lua "${TARGET_HOME}/.config/nvim/lua/config/" || echo "Warning: Failed to copy some config files from build features"
+elif [ -d "${SOURCE_DIR}/lua/config" ]; then
     echo "Copying configs from ${SOURCE_DIR}/lua/config"
-    cp -v "${SOURCE_DIR}/lua/config/"*.lua "${TARGET_HOME}/.config/nvim/lua/config/" || echo "Warning: Failed to copy some config files"
+    cp -v "${SOURCE_DIR}/lua/config/"*.lua "${TARGET_HOME}/.config/nvim/lua/config/" || echo "Warning: Failed to copy some config files from source"
 else
-    echo "Warning: Config source directory not found: ${SOURCE_DIR}/lua/config"
+    echo "Warning: Config source directory not found in either ${BUILD_FEATURES_DIR}/lua/config or ${SOURCE_DIR}/lua/config"
 fi
 
 # Copy init.lua
-if [ -f "${SOURCE_DIR}/lua/init.lua" ]; then
-    echo "Copying init.lua"
-    cp -v "${SOURCE_DIR}/lua/init.lua" "${TARGET_HOME}/.config/nvim/lua/" || echo "Warning: Failed to copy init.lua"
+if [ -n "${BUILD_FEATURES_DIR}" ] && [ -f "${BUILD_FEATURES_DIR}/lua/init.lua" ]; then
+    echo "Copying init.lua from build features"
+    cp -v "${BUILD_FEATURES_DIR}/lua/init.lua" "${TARGET_HOME}/.config/nvim/lua/" || echo "Warning: Failed to copy init.lua from build features"
+elif [ -f "${SOURCE_DIR}/lua/init.lua" ]; then
+    echo "Copying init.lua from source"
+    cp -v "${SOURCE_DIR}/lua/init.lua" "${TARGET_HOME}/.config/nvim/lua/" || echo "Warning: Failed to copy init.lua from source"
 fi
 
 # Copy .tmux.conf to home directory from tmux folder
