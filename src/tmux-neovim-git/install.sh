@@ -64,8 +64,10 @@ while fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
     echo "Waiting for apt lock..."
     sleep 1
 done
-DEBIAN_FRONTEND=noninteractive apt-get update -qq
-DEBIAN_FRONTEND=noninteractive apt-get install -y tmux curl fuse libfuse2
+echo "Installing tmux and dependencies..."
+export DEBIAN_FRONTEND=noninteractive
+run_with_sudo apt-get update -qq
+run_with_sudo apt-get install -y tmux curl fuse libfuse2
 cd /tmp
 curl -LO "https://github.com/neovim/neovim/releases/latest/download/${NVIM_APPIMAGE}"
 chmod u+x "${NVIM_APPIMAGE}"
