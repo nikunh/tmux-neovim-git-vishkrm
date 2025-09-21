@@ -1,8 +1,8 @@
 {
   "id": "tmux-neovim-git",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "name": "Tmux, Neovim, Git, SSH Setup",
   "description": "Configures tmux, Neovim, Git, SSH keys, and NerdFonts for the user. Fixed tmux/neovim installation with proper sudo handling. Re-publishing for GitHub deployment.",
   "options": {},
-  "installsAfter": ["ghcr.io/nikunh/001-dev-packages-vishkrm/001-dev-packages", "ghcr.io/devcontainers/features/common-utils", "ghcr.io/nikunh/002-user-setup-vishkrm/002-user-setup"]
+  "installsAfter": ["ghcr.io/nikunh/001-dev-packages-vishkrm/001-dev-packages", "ghcr.io/devcontainers/features/git", "ghcr.io/nikunh/002-user-setup-vishkrm/002-user-setup"]
 }
