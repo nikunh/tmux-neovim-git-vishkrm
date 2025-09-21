@@ -148,19 +148,30 @@ fi
 rm "${NVIM_APPIMAGE}"
 
 # SSH setup
-if [ ! -d ~/.ssh ]; then
-  mkdir -p ~/.ssh
-fi
 RUNTIME_USER=$(get_runtime_user)
-run_with_sudo chown -R "${RUNTIME_USER}:${RUNTIME_USER}" "$HOME/.ssh"
-run_with_sudo find "$HOME/.ssh" -type d -exec chmod 700 {} \;
-run_with_sudo find "$HOME/.ssh" -type f -exec chmod 600 {} \;
-run_with_sudo find "$HOME/.ssh" -name "*.pub" -type f -exec chmod 644 {} \;
-if ! grep -q "github.com" ~/.ssh/known_hosts; then
-  ssh-keyscan github.com >> ~/.ssh/known_hosts
+TARGET_HOME="/home/${RUNTIME_USER}"
+
+# Create SSH directory for target user
+if [ ! -d "${TARGET_HOME}/.ssh" ]; then
+  mkdir -p "${TARGET_HOME}/.ssh"
 fi
-if ! grep -q "StrictHostKeyChecking no" ~/.ssh/config; then
-  echo -e "Host github.com\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
+
+# Set ownership and permissions for target user's SSH directory
+run_with_sudo chown -R "${RUNTIME_USER}:${RUNTIME_USER}" "${TARGET_HOME}/.ssh"
+run_with_sudo find "${TARGET_HOME}/.ssh" -type d -exec chmod 700 {} \;
+run_with_sudo find "${TARGET_HOME}/.ssh" -type f -exec chmod 600 {} \;
+run_with_sudo find "${TARGET_HOME}/.ssh" -name "*.pub" -type f -exec chmod 644 {} \;
+
+# Add GitHub to known_hosts for target user
+if [ ! -f "${TARGET_HOME}/.ssh/known_hosts" ] || ! grep -q "github.com" "${TARGET_HOME}/.ssh/known_hosts" 2>/dev/null; then
+  ssh-keyscan github.com >> "${TARGET_HOME}/.ssh/known_hosts"
+  run_with_sudo chown "${RUNTIME_USER}:${RUNTIME_USER}" "${TARGET_HOME}/.ssh/known_hosts"
+fi
+
+# Add SSH config for GitHub for target user
+if [ ! -f "${TARGET_HOME}/.ssh/config" ] || ! grep -q "StrictHostKeyChecking no" "${TARGET_HOME}/.ssh/config" 2>/dev/null; then
+  echo -e "Host github.com\n\tStrictHostKeyChecking no\n" >> "${TARGET_HOME}/.ssh/config"
+  run_with_sudo chown "${RUNTIME_USER}:${RUNTIME_USER}" "${TARGET_HOME}/.ssh/config"
 fi
 # Git config
 if ! git config --global --get core.editor; then
