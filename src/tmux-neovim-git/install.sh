@@ -67,14 +67,84 @@ done
 echo "Installing tmux and dependencies..."
 export DEBIAN_FRONTEND=noninteractive
 run_with_sudo apt-get update -qq
-run_with_sudo apt-get install -y tmux curl fuse libfuse2
+run_with_sudo apt-get install -y tmux curl fuse libfuse2 squashfs-tools
 cd /tmp
+echo "Downloading Neovim AppImage for ${NVIM_APPIMAGE}..."
 curl -LO "https://github.com/neovim/neovim/releases/latest/download/${NVIM_APPIMAGE}"
 chmod u+x "${NVIM_APPIMAGE}"
-./"${NVIM_APPIMAGE}" --appimage-extract
-run_with_sudo mv squashfs-root /opt/nvim
-run_with_sudo ln -sf /opt/nvim/AppRun /usr/local/bin/nvim
-run_with_sudo ln -sf /usr/local/bin/nvim /usr/local/bin/vim
+
+# Try multiple AppImage extraction methods for Docker compatibility
+echo "Extracting Neovim AppImage (trying multiple methods for Docker compatibility)..."
+EXTRACTION_SUCCESS=false
+
+# Method 1: Standard AppImage extraction (works if FUSE is available)
+echo "Attempting standard AppImage extraction..."
+if ./"${NVIM_APPIMAGE}" --appimage-extract >/dev/null 2>&1; then
+    echo "✓ Standard AppImage extraction successful"
+    EXTRACTION_SUCCESS=true
+else
+    echo "✗ Standard AppImage extraction failed (FUSE likely not available in container)"
+fi
+
+# Method 2: Extract-and-run method (Docker-friendly fallback)
+if [ "$EXTRACTION_SUCCESS" = false ]; then
+    echo "Attempting --appimage-extract-and-run method..."
+    if ./"${NVIM_APPIMAGE}" --appimage-extract-and-run --version >/dev/null 2>&1; then
+        echo "✓ AppImage extract-and-run works, but we need the extracted files..."
+        # This method runs the app but doesn't extract files, so we still need extraction
+        # Try forcing extraction without execution
+        echo "Forcing manual extraction..."
+        if timeout 30 ./"${NVIM_APPIMAGE}" --appimage-extract >/dev/null 2>&1; then
+            EXTRACTION_SUCCESS=true
+            echo "✓ Forced extraction successful"
+        fi
+    fi
+fi
+
+# Method 3: Alternative extraction approaches
+if [ "$EXTRACTION_SUCCESS" = false ]; then
+    echo "Attempting alternative extraction methods..."
+
+    # Try with different AppImage environment variables
+    export APPIMAGE_EXTRACT_AND_RUN=1
+    if ./"${NVIM_APPIMAGE}" --appimage-extract >/dev/null 2>&1; then
+        echo "✓ Alternative extraction method successful"
+        EXTRACTION_SUCCESS=true
+    else
+        # Try unsquashfs if available
+        if command -v unsquashfs >/dev/null 2>&1; then
+            echo "Trying unsquashfs extraction..."
+            if unsquashfs "${NVIM_APPIMAGE}" >/dev/null 2>&1; then
+                mv squashfs-root squashfs-root 2>/dev/null || true
+                EXTRACTION_SUCCESS=true
+                echo "✓ unsquashfs extraction successful"
+            fi
+        fi
+    fi
+fi
+
+# Verify extraction and install
+if [ "$EXTRACTION_SUCCESS" = true ] && [ -d "squashfs-root" ]; then
+    echo "✓ Neovim AppImage extraction successful - installing..."
+    run_with_sudo mv squashfs-root /opt/nvim
+    run_with_sudo ln -sf /opt/nvim/AppRun /usr/local/bin/nvim
+    run_with_sudo ln -sf /usr/local/bin/nvim /usr/local/bin/vim
+    echo "✓ Neovim installed successfully"
+
+    # Verify installation
+    if /opt/nvim/AppRun --version >/dev/null 2>&1; then
+        NVIM_VERSION=$(/opt/nvim/AppRun --version | head -1)
+        echo "✓ Neovim installation verified: ${NVIM_VERSION}"
+    else
+        echo "⚠ Warning: Neovim installation may have issues"
+    fi
+else
+    echo "✗ All AppImage extraction methods failed!"
+    echo "✗ This will prevent LazyVim from working properly"
+    echo "✗ LazyVim requires Neovim >= 0.8.0, but Ubuntu 22.04 only provides 0.6.1"
+    echo "✗ Container build will continue but Neovim setup is incomplete"
+fi
+
 rm "${NVIM_APPIMAGE}"
 
 # SSH setup
