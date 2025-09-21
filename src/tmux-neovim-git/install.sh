@@ -72,9 +72,9 @@ cd /tmp
 curl -LO "https://github.com/neovim/neovim/releases/latest/download/${NVIM_APPIMAGE}"
 chmod u+x "${NVIM_APPIMAGE}"
 ./"${NVIM_APPIMAGE}" --appimage-extract
-mv squashfs-root /opt/nvim
-ln -sf /opt/nvim/AppRun /usr/local/bin/nvim
-ln -sf /usr/local/bin/nvim /usr/local/bin/vim
+run_with_sudo mv squashfs-root /opt/nvim
+run_with_sudo ln -sf /opt/nvim/AppRun /usr/local/bin/nvim
+run_with_sudo ln -sf /usr/local/bin/nvim /usr/local/bin/vim
 rm "${NVIM_APPIMAGE}"
 
 # SSH setup
@@ -211,9 +211,9 @@ cp -n "$(dirname "$0")/tmux/.tmux.conf" "${TARGET_HOME}/.tmux.conf" 2>/dev/null 
 
 # Fix permissions for runtime user (prevents LazyVim permission errors)
 echo "Fixing permissions for runtime user '${RUNTIME_USER}' configuration..."
-chown -R "${RUNTIME_USER}:${RUNTIME_USER}" "${TARGET_HOME}/.config" 2>/dev/null || true 
-chown -R "${RUNTIME_USER}:${RUNTIME_USER}" "${TARGET_HOME}/.local" 2>/dev/null || true
-chown -R "${RUNTIME_USER}:${RUNTIME_USER}" "${TARGET_HOME}/.tmux.conf" 2>/dev/null || true
+run_with_sudo chown -R "${RUNTIME_USER}:${RUNTIME_USER}" "${TARGET_HOME}/.config" 2>/dev/null || true
+run_with_sudo chown -R "${RUNTIME_USER}:${RUNTIME_USER}" "${TARGET_HOME}/.local" 2>/dev/null || true
+run_with_sudo chown -R "${RUNTIME_USER}:${RUNTIME_USER}" "${TARGET_HOME}/.tmux.conf" 2>/dev/null || true
 
 # Clean up
-sudo apt-get clean
+run_with_sudo apt-get clean
