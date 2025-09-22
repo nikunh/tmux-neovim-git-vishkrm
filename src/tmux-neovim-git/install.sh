@@ -67,7 +67,10 @@ done
 echo "Installing tmux and dependencies..."
 export DEBIAN_FRONTEND=noninteractive
 run_with_sudo apt-get update -qq
-run_with_sudo apt-get install -y tmux curl fuse libfuse2 squashfs-tools
+echo "Installing tmux specifically..."
+run_with_sudo apt-get install -y --no-install-recommends tmux
+echo "Installing other dependencies..."
+run_with_sudo apt-get install -y --no-install-recommends curl fuse libfuse2 squashfs-tools
 cd /tmp
 echo "Downloading Neovim AppImage for ${NVIM_APPIMAGE}..."
 curl -LO "https://github.com/neovim/neovim/releases/latest/download/${NVIM_APPIMAGE}"
