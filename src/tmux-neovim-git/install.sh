@@ -68,7 +68,22 @@ echo "Installing tmux and dependencies..."
 export DEBIAN_FRONTEND=noninteractive
 run_with_sudo apt-get update -qq
 echo "Installing tmux specifically..."
-run_with_sudo apt-get install -y --no-install-recommends tmux
+if ! run_with_sudo apt-get install -y --no-install-recommends tmux; then
+    echo "❌ First tmux install attempt failed, retrying with apt update..."
+    run_with_sudo apt-get update
+    run_with_sudo apt-get install -y --no-install-recommends tmux
+fi
+
+# Verify tmux installation
+if command -v tmux >/dev/null 2>&1; then
+    TMUX_VERSION=$(tmux -V)
+    echo "✅ tmux installed successfully: ${TMUX_VERSION}"
+else
+    echo "❌ ERROR: tmux installation failed!"
+    echo "❌ This is a critical issue - container may be unusable for development"
+    exit 1
+fi
+
 echo "Installing other dependencies..."
 run_with_sudo apt-get install -y --no-install-recommends curl fuse libfuse2 squashfs-tools
 cd /tmp
