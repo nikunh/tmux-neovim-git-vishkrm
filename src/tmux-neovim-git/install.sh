@@ -85,7 +85,7 @@ else
 fi
 
 echo "Installing other dependencies..."
-run_with_sudo apt-get install -y --no-install-recommends curl fuse libfuse2 squashfs-tools
+run_with_sudo apt-get install -y --no-install-recommends curl fuse libfuse2 squashfs-tools openssh-client
 cd /tmp
 echo "Downloading Neovim AppImage for ${NVIM_APPIMAGE}..."
 curl -LO "https://github.com/neovim/neovim/releases/latest/download/${NVIM_APPIMAGE}"
@@ -182,8 +182,12 @@ run_with_sudo find "${TARGET_HOME}/.ssh" -name "*.pub" -type f -exec chmod 644 {
 
 # Add GitHub to known_hosts for target user
 if [ ! -f "${TARGET_HOME}/.ssh/known_hosts" ] || ! grep -q "github.com" "${TARGET_HOME}/.ssh/known_hosts" 2>/dev/null; then
-  ssh-keyscan github.com >> "${TARGET_HOME}/.ssh/known_hosts"
-  run_with_sudo chown "${RUNTIME_USER}:${RUNTIME_USER}" "${TARGET_HOME}/.ssh/known_hosts"
+  if command -v ssh-keyscan >/dev/null 2>&1; then
+    ssh-keyscan github.com >> "${TARGET_HOME}/.ssh/known_hosts" 2>/dev/null || echo "Warning: Could not add GitHub to known_hosts"
+    run_with_sudo chown "${RUNTIME_USER}:${RUNTIME_USER}" "${TARGET_HOME}/.ssh/known_hosts" 2>/dev/null || true
+  else
+    echo "Warning: ssh-keyscan not available, skipping GitHub known_hosts setup"
+  fi
 fi
 
 # Add SSH config for GitHub for target user
