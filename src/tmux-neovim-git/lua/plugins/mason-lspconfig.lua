@@ -1,8 +1,8 @@
 return {
-	"williamboman/mason-lspconfig.nvim",
+	"mason-org/mason-lspconfig.nvim",
 	version = "^1.0.0", -- Pin to v1.x
 	dependencies = {
-		"williamboman/mason.nvim",
+		"mason-org/mason.nvim",
 	},
 	opts = {
 		automatic_installation = true,
