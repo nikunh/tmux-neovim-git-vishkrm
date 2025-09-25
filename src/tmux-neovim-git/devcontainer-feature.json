@@ -1,6 +1,6 @@
 {
   "id": "tmux-neovim-git",
-  "version": "0.0.15",
+  "version": "0.0.16",
   "name": "Tmux, Neovim, Git, SSH Setup",
   "description": "Configures tmux, Neovim, Git, SSH keys, and NerdFonts for the user. Fixed Docker-compatible AppImage extraction for LazyVim support. Includes multiple fallback methods for robust Neovim installation.",
   "options": {},
