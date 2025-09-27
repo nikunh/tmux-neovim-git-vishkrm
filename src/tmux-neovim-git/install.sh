@@ -248,7 +248,7 @@ fi
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 if [ ! -f "${TARGET_HOME}/.tmux.conf" ] && [ -f "${SCRIPT_DIR}/tmux/.tmux.conf" ]; then
   cp "${SCRIPT_DIR}/tmux/.tmux.conf" "${TARGET_HOME}/.tmux.conf"
-  chown ${USERNAME}:${USERNAME} "${TARGET_HOME}/.tmux.conf"
+  chown ${RUNTIME_USER}:${RUNTIME_USER} "${TARGET_HOME}/.tmux.conf"
 fi
 if ! grep -q 'eval "$(direnv hook zsh)"' "${TARGET_HOME}/.zshrc"; then
   echo 'eval "$(direnv hook zsh)"' >> "${TARGET_HOME}/.zshrc"
@@ -313,6 +313,18 @@ elif [ -f "${SOURCE_DIR}/lua/init.lua" ]; then
 fi
 
 # Note: .tmux.conf copying is handled earlier in the script with proper SCRIPT_DIR logic
+
+# Copy zsh fragments for tmux UTF-8 support
+FRAGMENTS_DIR="/etc/zsh/fragments"
+if [ ! -d "${FRAGMENTS_DIR}" ]; then
+  run_with_sudo mkdir -p "${FRAGMENTS_DIR}"
+fi
+
+if [ -f "${SCRIPT_DIR}/fragments/tmux-utf8.zshrc" ]; then
+  echo "Installing tmux UTF-8 fragment..."
+  run_with_sudo cp "${SCRIPT_DIR}/fragments/tmux-utf8.zshrc" "${FRAGMENTS_DIR}/tmux-utf8.zshrc"
+  run_with_sudo chmod 644 "${FRAGMENTS_DIR}/tmux-utf8.zshrc"
+fi
 
 # Fix permissions for runtime user (prevents LazyVim permission errors)
 echo "Fixing permissions for runtime user '${RUNTIME_USER}' configuration..."
