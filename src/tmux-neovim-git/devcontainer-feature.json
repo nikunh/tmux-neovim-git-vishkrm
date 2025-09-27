@@ -1,6 +1,6 @@
 {
   "id": "tmux-neovim-git",
-  "version": "0.0.22",
+  "version": "0.0.23",
   "name": "Tmux, Neovim, Git, SSH Setup",
   "description": "Configures tmux with UTF-8 support, Neovim, Git, SSH keys, and NerdFonts. Includes tmux help popup (Ctrl-b h) for prompt symbols. Fixed tmux Unicode rendering and config copy issues.",
   "options": {},
