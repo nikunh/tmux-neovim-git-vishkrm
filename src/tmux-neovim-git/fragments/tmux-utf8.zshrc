@@ -2,7 +2,8 @@
 # tmux UTF-8 and locale configuration fragment
 
 # Force UTF-8 mode in tmux (fixes Unicode rendering issues)
-alias tmux='tmux -u'
+# Use Oh My Zsh tmux plugin's built-in Unicode support
+export ZSH_TMUX_UNICODE=true
 
 # Set UTF-8 locale for better compatibility
 export LANG=${LANG:-C.utf8}
