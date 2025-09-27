@@ -314,16 +314,22 @@ fi
 
 # Note: .tmux.conf copying is handled earlier in the script with proper SCRIPT_DIR logic
 
-# Copy zsh fragments for tmux UTF-8 support
-FRAGMENTS_DIR="/etc/zsh/fragments"
+# Copy zsh fragments for tmux UTF-8 support to correct location
+FRAGMENTS_DIR="${TARGET_HOME}/.ohmyzsh_source_load_scripts"
 if [ ! -d "${FRAGMENTS_DIR}" ]; then
-  run_with_sudo mkdir -p "${FRAGMENTS_DIR}"
+  mkdir -p "${FRAGMENTS_DIR}"
 fi
 
 if [ -f "${SCRIPT_DIR}/fragments/tmux-utf8.zshrc" ]; then
   echo "Installing tmux UTF-8 fragment..."
-  run_with_sudo cp "${SCRIPT_DIR}/fragments/tmux-utf8.zshrc" "${FRAGMENTS_DIR}/tmux-utf8.zshrc"
-  run_with_sudo chmod 644 "${FRAGMENTS_DIR}/tmux-utf8.zshrc"
+  cp "${SCRIPT_DIR}/fragments/tmux-utf8.zshrc" "${FRAGMENTS_DIR}/.tmux-utf8.zshrc"
+  chown "${RUNTIME_USER}:${RUNTIME_USER}" "${FRAGMENTS_DIR}/.tmux-utf8.zshrc"
+  chmod 644 "${FRAGMENTS_DIR}/.tmux-utf8.zshrc"
+elif [ -f "${BUILD_FEATURES_DIR}/fragments/tmux-utf8.zshrc" ]; then
+  echo "Installing tmux UTF-8 fragment from build features..."
+  cp "${BUILD_FEATURES_DIR}/fragments/tmux-utf8.zshrc" "${FRAGMENTS_DIR}/.tmux-utf8.zshrc"
+  chown "${RUNTIME_USER}:${RUNTIME_USER}" "${FRAGMENTS_DIR}/.tmux-utf8.zshrc"
+  chmod 644 "${FRAGMENTS_DIR}/.tmux-utf8.zshrc"
 fi
 
 # Fix permissions for runtime user (prevents LazyVim permission errors)
