@@ -312,8 +312,7 @@ elif [ -f "${SOURCE_DIR}/lua/init.lua" ]; then
     cp -v "${SOURCE_DIR}/lua/init.lua" "${TARGET_HOME}/.config/nvim/lua/" || echo "Warning: Failed to copy init.lua from source"
 fi
 
-# Copy .tmux.conf to home directory from tmux folder
-cp -n "$(dirname "$0")/tmux/.tmux.conf" "${TARGET_HOME}/.tmux.conf" 2>/dev/null || true
+# Note: .tmux.conf copying is handled earlier in the script with proper SCRIPT_DIR logic
 
 # Fix permissions for runtime user (prevents LazyVim permission errors)
 echo "Fixing permissions for runtime user '${RUNTIME_USER}' configuration..."
