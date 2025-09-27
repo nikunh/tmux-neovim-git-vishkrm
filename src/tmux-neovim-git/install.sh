@@ -246,9 +246,18 @@ if ! grep -q 'alias aider-chat=' "${TARGET_HOME}/.zshrc"; then
 fi
 # Copy tmux configuration from feature directory
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-if [ ! -f "${TARGET_HOME}/.tmux.conf" ] && [ -f "${SCRIPT_DIR}/tmux/.tmux.conf" ]; then
-  cp "${SCRIPT_DIR}/tmux/.tmux.conf" "${TARGET_HOME}/.tmux.conf"
-  chown ${RUNTIME_USER}:${RUNTIME_USER} "${TARGET_HOME}/.tmux.conf"
+if [ ! -f "${TARGET_HOME}/.tmux.conf" ]; then
+  if [ -f "${SCRIPT_DIR}/tmux/.tmux.conf" ]; then
+    echo "Copying tmux.conf from script directory..."
+    cp "${SCRIPT_DIR}/tmux/.tmux.conf" "${TARGET_HOME}/.tmux.conf"
+    chown ${RUNTIME_USER}:${RUNTIME_USER} "${TARGET_HOME}/.tmux.conf"
+  elif [ -n "${BUILD_FEATURES_DIR}" ] && [ -f "${BUILD_FEATURES_DIR}/tmux/.tmux.conf" ]; then
+    echo "Copying tmux.conf from build features directory..."
+    cp "${BUILD_FEATURES_DIR}/tmux/.tmux.conf" "${TARGET_HOME}/.tmux.conf"
+    chown ${RUNTIME_USER}:${RUNTIME_USER} "${TARGET_HOME}/.tmux.conf"
+  else
+    echo "Warning: tmux.conf not found in ${SCRIPT_DIR}/tmux/ or ${BUILD_FEATURES_DIR}/tmux/"
+  fi
 fi
 if ! grep -q 'eval "$(direnv hook zsh)"' "${TARGET_HOME}/.zshrc"; then
   echo 'eval "$(direnv hook zsh)"' >> "${TARGET_HOME}/.zshrc"
