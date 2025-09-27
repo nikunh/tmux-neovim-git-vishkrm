@@ -244,8 +244,11 @@ fi
 if ! grep -q 'alias aider-chat=' "${TARGET_HOME}/.zshrc"; then
   echo 'alias aider-chat="pipx run aider-chat --edit-format whole"' >> "${TARGET_HOME}/.zshrc"
 fi
-if [ ! -f "${TARGET_HOME}/.tmux.conf" ] && [ -f /etc/static/configs/tmux/.tmux.conf ]; then
-  cp /etc/static/configs/tmux/.tmux.conf "${TARGET_HOME}/.tmux.conf"
+# Copy tmux configuration from feature directory
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+if [ ! -f "${TARGET_HOME}/.tmux.conf" ] && [ -f "${SCRIPT_DIR}/tmux/.tmux.conf" ]; then
+  cp "${SCRIPT_DIR}/tmux/.tmux.conf" "${TARGET_HOME}/.tmux.conf"
+  chown ${USERNAME}:${USERNAME} "${TARGET_HOME}/.tmux.conf"
 fi
 if ! grep -q 'eval "$(direnv hook zsh)"' "${TARGET_HOME}/.zshrc"; then
   echo 'eval "$(direnv hook zsh)"' >> "${TARGET_HOME}/.zshrc"
