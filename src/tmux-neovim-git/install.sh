@@ -245,19 +245,10 @@ if ! grep -q 'alias aider-chat=' "${TARGET_HOME}/.zshrc"; then
   echo 'alias aider-chat="pipx run aider-chat --edit-format whole"' >> "${TARGET_HOME}/.zshrc"
 fi
 # Copy tmux configuration from feature directory
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-if [ ! -f "${TARGET_HOME}/.tmux.conf" ]; then
-  if [ -f "${SCRIPT_DIR}/tmux/.tmux.conf" ]; then
-    echo "Copying tmux.conf from script directory..."
-    cp "${SCRIPT_DIR}/tmux/.tmux.conf" "${TARGET_HOME}/.tmux.conf"
-    chown ${RUNTIME_USER}:${RUNTIME_USER} "${TARGET_HOME}/.tmux.conf"
-  elif [ -n "${BUILD_FEATURES_DIR}" ] && [ -f "${BUILD_FEATURES_DIR}/tmux/.tmux.conf" ]; then
-    echo "Copying tmux.conf from build features directory..."
-    cp "${BUILD_FEATURES_DIR}/tmux/.tmux.conf" "${TARGET_HOME}/.tmux.conf"
-    chown ${RUNTIME_USER}:${RUNTIME_USER} "${TARGET_HOME}/.tmux.conf"
-  else
-    echo "Warning: tmux.conf not found in ${SCRIPT_DIR}/tmux/ or ${BUILD_FEATURES_DIR}/tmux/"
-  fi
+if [ ! -f "${TARGET_HOME}/.tmux.conf" ] && [ -f "./tmux/.tmux.conf" ]; then
+  echo "Copying tmux.conf..."
+  cp "./tmux/.tmux.conf" "${TARGET_HOME}/.tmux.conf"
+  chown ${RUNTIME_USER}:${RUNTIME_USER} "${TARGET_HOME}/.tmux.conf"
 fi
 if ! grep -q 'eval "$(direnv hook zsh)"' "${TARGET_HOME}/.zshrc"; then
   echo 'eval "$(direnv hook zsh)"' >> "${TARGET_HOME}/.zshrc"
@@ -329,14 +320,9 @@ if [ ! -d "${FRAGMENTS_DIR}" ]; then
   mkdir -p "${FRAGMENTS_DIR}"
 fi
 
-if [ -f "${SCRIPT_DIR}/fragments/tmux-utf8.zshrc" ]; then
+if [ -f "./fragments/tmux-utf8.zshrc" ]; then
   echo "Installing tmux UTF-8 fragment..."
-  cp "${SCRIPT_DIR}/fragments/tmux-utf8.zshrc" "${FRAGMENTS_DIR}/.tmux-utf8.zshrc"
-  chown "${RUNTIME_USER}:${RUNTIME_USER}" "${FRAGMENTS_DIR}/.tmux-utf8.zshrc"
-  chmod 644 "${FRAGMENTS_DIR}/.tmux-utf8.zshrc"
-elif [ -f "${BUILD_FEATURES_DIR}/fragments/tmux-utf8.zshrc" ]; then
-  echo "Installing tmux UTF-8 fragment from build features..."
-  cp "${BUILD_FEATURES_DIR}/fragments/tmux-utf8.zshrc" "${FRAGMENTS_DIR}/.tmux-utf8.zshrc"
+  cp "./fragments/tmux-utf8.zshrc" "${FRAGMENTS_DIR}/.tmux-utf8.zshrc"
   chown "${RUNTIME_USER}:${RUNTIME_USER}" "${FRAGMENTS_DIR}/.tmux-utf8.zshrc"
   chmod 644 "${FRAGMENTS_DIR}/.tmux-utf8.zshrc"
 fi
