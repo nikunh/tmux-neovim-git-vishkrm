@@ -1,5 +1,6 @@
 #!/bin/bash
 set -e
+# Shebang: bash (not zsh) to avoid zsh USERNAME-special-parameter shadowing.
 
 # Logging mechanism for debugging
 LOG_FILE="/tmp/tmux-neovim-git-install.log"
@@ -55,8 +56,8 @@ get_runtime_user() {
         return
     fi
     
-    # Final fallback to babaji for backward compatibility
-    echo "${DEVPOD_USERNAME:-babaji}"
+    # Final fallback to vishkrm (canonical default since 2026-05-15)
+    echo "${DEVPOD_USERNAME:-vishkrm}"
 }
 
 # Install newer Neovim version (LazyVim requires >= 0.8.0)
@@ -64,14 +65,16 @@ echo "Installing newer Neovim version for LazyVim compatibility..."
 echo "Version 0.0.4 - Using tarball method for Docker compatibility"
 
 # Architecture detection for Neovim tarball
+# (Switched from AppImage to tarball 2026-05-15: FUSE not available in container.
+#  Tarball naming changed in v0.10.4 (Dec 2024): nvim-linux64 → nvim-linux-x86_64.
+#  We try the new name first and fall back to the old name for older releases.)
 if [ "$(uname -m)" = "x86_64" ]; then
-    NVIM_ARCH="linux64"
+    NVIM_TARBALL_CANDIDATES=("nvim-linux-x86_64.tar.gz" "nvim-linux64.tar.gz")
 else
-    NVIM_ARCH="linux-arm64"
+    NVIM_TARBALL_CANDIDATES=("nvim-linux-arm64.tar.gz")
 fi
 
 # Install tmux and Neovim dependencies
-# Wait for apt lock and refresh package database
 while fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
     echo "Waiting for apt lock..."
     sleep 1
@@ -79,7 +82,7 @@ done
 echo "Installing tmux and dependencies..."
 export DEBIAN_FRONTEND=noninteractive
 run_with_sudo apt-get update -qq
-echo "Installing tmux specifically..."
+echo "Installing tmux..."
 if ! run_with_sudo apt-get install -y --no-install-recommends tmux; then
     echo "❌ First tmux install attempt failed, retrying with apt update..."
     run_with_sudo apt-get update
@@ -89,50 +92,70 @@ fi
 # Verify tmux installation
 if command -v tmux >/dev/null 2>&1; then
     TMUX_VERSION=$(tmux -V)
-    echo "✅ tmux installed successfully: ${TMUX_VERSION}"
+    echo "✅ tmux installed: ${TMUX_VERSION}"
 else
     echo "❌ ERROR: tmux installation failed!"
-    echo "❌ This is a critical issue - container may be unusable for development"
     exit 1
 fi
 
 echo "Installing other dependencies..."
-run_with_sudo apt-get install -y --no-install-recommends curl openssh-client
+run_with_sudo apt-get install -y --no-install-recommends curl tar gzip openssh-client
 
-# Download and install Neovim using tarball (Docker-compatible method)
-echo "Downloading Neovim tarball for ${NVIM_ARCH}..."
-NVIM_URL="https://github.com/neovim/neovim/releases/latest/download/nvim-${NVIM_ARCH}.tar.gz"
-curl -fsSL -o /tmp/nvim.tar.gz "${NVIM_URL}"
+# Download + extract Neovim tarball (try each candidate URL)
+NVIM_DOWNLOADED=false
+NVIM_TARBALL=""
+for candidate in "${NVIM_TARBALL_CANDIDATES[@]}"; do
+    echo "Trying Neovim tarball: ${candidate}..."
+    NVIM_URL="https://github.com/neovim/neovim/releases/latest/download/${candidate}"
+    if curl -fLo /tmp/nvim.tar.gz "$NVIM_URL"; then
+        NVIM_TARBALL="$candidate"
+        NVIM_DOWNLOADED=true
+        echo "✓ Downloaded ${candidate} ($(stat -c%s /tmp/nvim.tar.gz) bytes)"
+        break
+    else
+        echo "✗ ${candidate} not available (404 or download error)"
+    fi
+done
 
-if [ ! -f /tmp/nvim.tar.gz ]; then
-    echo "✗ Failed to download Neovim tarball"
-    echo "✗ LazyVim requires Neovim >= 0.8.0, but installation failed"
+if [ "$NVIM_DOWNLOADED" = false ]; then
+    echo "❌ All Neovim tarball downloads failed"
+    echo "❌ Tried: ${NVIM_TARBALL_CANDIDATES[*]}"
+    echo "❌ LazyVim won't work without nvim >= 0.8.0"
     exit 1
 fi
 
-echo "Extracting Neovim tarball..."
-run_with_sudo tar -xzf /tmp/nvim.tar.gz -C /opt/
-run_with_sudo mv /opt/nvim-${NVIM_ARCH} /opt/nvim
+# Derive extracted directory name from tarball (strip .tar.gz)
+NVIM_DIR="${NVIM_TARBALL%.tar.gz}"
 
-# Create symlinks
-run_with_sudo ln -sf /opt/nvim/bin/nvim /usr/local/bin/nvim
-run_with_sudo ln -sf /usr/local/bin/nvim /usr/local/bin/vim
+# Remove any prior install
+run_with_sudo rm -rf /opt/nvim /opt/${NVIM_DIR}
 
-# Verify installation
-if command -v nvim >/dev/null 2>&1; then
-    NVIM_VERSION=$(nvim --version | head -1)
-    echo "✅ Neovim installed successfully: ${NVIM_VERSION}"
+# Extract to /opt
+if run_with_sudo tar xzf /tmp/nvim.tar.gz -C /opt; then
+    # Stable symlink: /opt/nvim → /opt/${NVIM_DIR} (so consumers don't need to know naming)
+    run_with_sudo ln -sf "/opt/${NVIM_DIR}" /opt/nvim
+    run_with_sudo ln -sf /opt/nvim/bin/nvim /usr/local/bin/nvim
+    run_with_sudo ln -sf /usr/local/bin/nvim /usr/local/bin/vim
+    if /opt/nvim/bin/nvim --version >/dev/null 2>&1; then
+        NVIM_VERSION=$(/opt/nvim/bin/nvim --version | head -1)
+        echo "✅ Neovim installed: ${NVIM_VERSION}"
+    else
+        echo "❌ nvim binary not executable after extract"
+        exit 1
+    fi
 else
-    echo "✗ Neovim installation verification failed"
+    echo "❌ tar extraction failed"
     exit 1
 fi
-
-# Clean up
 rm -f /tmp/nvim.tar.gz
 
 # SSH setup
 RUNTIME_USER=$(get_runtime_user)
-TARGET_HOME="/home/${RUNTIME_USER}"
+# Audit fix 2026-05-15: resolve home from /etc/passwd (not hardcoded /home/$RUNTIME_USER)
+# and primary group from id -gn (vishkrm's group is 'users' not 'vishkrm').
+TARGET_HOME=$(getent passwd "$RUNTIME_USER" 2>/dev/null | cut -d: -f6)
+[ -z "$TARGET_HOME" ] && TARGET_HOME="/home/${RUNTIME_USER}"
+RUNTIME_GROUP=$(id -gn "$RUNTIME_USER" 2>/dev/null || echo users)
 
 # Create SSH directory for target user
 if [ ! -d "${TARGET_HOME}/.ssh" ]; then
@@ -140,7 +163,7 @@ if [ ! -d "${TARGET_HOME}/.ssh" ]; then
 fi
 
 # Set ownership and permissions for target user's SSH directory
-run_with_sudo chown -R "${RUNTIME_USER}:${RUNTIME_USER}" "${TARGET_HOME}/.ssh"
+run_with_sudo chown -R "${RUNTIME_USER}:${RUNTIME_GROUP}" "${TARGET_HOME}/.ssh"
 run_with_sudo find "${TARGET_HOME}/.ssh" -type d -exec chmod 700 {} \;
 run_with_sudo find "${TARGET_HOME}/.ssh" -type f -exec chmod 600 {} \;
 run_with_sudo find "${TARGET_HOME}/.ssh" -name "*.pub" -type f -exec chmod 644 {} \;
@@ -149,7 +172,7 @@ run_with_sudo find "${TARGET_HOME}/.ssh" -name "*.pub" -type f -exec chmod 644 {
 if [ ! -f "${TARGET_HOME}/.ssh/known_hosts" ] || ! grep -q "github.com" "${TARGET_HOME}/.ssh/known_hosts" 2>/dev/null; then
   if command -v ssh-keyscan >/dev/null 2>&1; then
     ssh-keyscan github.com >> "${TARGET_HOME}/.ssh/known_hosts" 2>/dev/null || echo "Warning: Could not add GitHub to known_hosts"
-    run_with_sudo chown "${RUNTIME_USER}:${RUNTIME_USER}" "${TARGET_HOME}/.ssh/known_hosts" 2>/dev/null || true
+    run_with_sudo chown "${RUNTIME_USER}:${RUNTIME_GROUP}" "${TARGET_HOME}/.ssh/known_hosts" 2>/dev/null || true
   else
     echo "Warning: ssh-keyscan not available, skipping GitHub known_hosts setup"
   fi
@@ -158,7 +181,7 @@ fi
 # Add SSH config for GitHub for target user
 if [ ! -f "${TARGET_HOME}/.ssh/config" ] || ! grep -q "StrictHostKeyChecking no" "${TARGET_HOME}/.ssh/config" 2>/dev/null; then
   echo -e "Host github.com\n\tStrictHostKeyChecking no\n" >> "${TARGET_HOME}/.ssh/config"
-  run_with_sudo chown "${RUNTIME_USER}:${RUNTIME_USER}" "${TARGET_HOME}/.ssh/config"
+  run_with_sudo chown "${RUNTIME_USER}:${RUNTIME_GROUP}" "${TARGET_HOME}/.ssh/config"
 fi
 # Git config
 if ! git config --global --get core.editor; then
@@ -188,9 +211,11 @@ if [ ! -f ~/.local/share/fonts/nerdfonts/Ubuntu\ Mono\ Nerd\ Font\ Complete.ttf 
   fc-cache -fv
   rm -rf /tmp/nerdfonts.zip
 fi
-# Get runtime user and set target home directory
+# Get runtime user and set target home directory (re-resolved here in case different scope)
 RUNTIME_USER=$(get_runtime_user)
-TARGET_HOME="/home/${RUNTIME_USER}"
+TARGET_HOME=$(getent passwd "$RUNTIME_USER" 2>/dev/null | cut -d: -f6)
+[ -z "$TARGET_HOME" ] && TARGET_HOME="/home/${RUNTIME_USER}"
+RUNTIME_GROUP=$(id -gn "$RUNTIME_USER" 2>/dev/null || echo users)
 
 # Neovim config
 if [ ! -d "${TARGET_HOME}/.config/nvim" ]; then
@@ -237,7 +262,7 @@ if [ ! -f "${TARGET_HOME}/.tmux.conf" ] && [ -f "${SCRIPT_DIR}/tmux/.tmux.conf" 
   if cp "${SCRIPT_DIR}/tmux/.tmux.conf" "${TARGET_HOME}/.tmux.conf" 2>/dev/null; then
     log_debug "tmux.conf copy successful"
     log_debug "Copied file size: $(ls -la "${TARGET_HOME}/.tmux.conf" 2>/dev/null || echo 'FAILED')"
-    if chown ${RUNTIME_USER}:${RUNTIME_USER} "${TARGET_HOME}/.tmux.conf" 2>/dev/null; then
+    if chown ${RUNTIME_USER}:${RUNTIME_GROUP} "${TARGET_HOME}/.tmux.conf" 2>/dev/null; then
       log_debug "tmux.conf ownership change successful"
       log_debug "Final file permissions: $(ls -la "${TARGET_HOME}/.tmux.conf" 2>/dev/null || echo 'FAILED')"
     else
@@ -353,11 +378,11 @@ if [ -f "${SCRIPT_DIR}/fragments/tmux-utf8.zshrc" ]; then
     log_debug "Fragment copy successful"
     log_debug "Copied fragment file details: $(ls -la "${FRAGMENTS_DIR}/.tmux-utf8.zshrc" 2>/dev/null || echo 'FAILED')"
 
-    if chown "${RUNTIME_USER}:${RUNTIME_USER}" "${FRAGMENTS_DIR}/.tmux-utf8.zshrc" 2>/dev/null; then
+    if chown "${RUNTIME_USER}:${RUNTIME_GROUP}" "${FRAGMENTS_DIR}/.tmux-utf8.zshrc" 2>/dev/null; then
       log_debug "Fragment ownership change successful"
     else
       log_debug "ERROR: Fragment ownership change failed"
-      log_debug "Ownership error details: $(chown "${RUNTIME_USER}:${RUNTIME_USER}" "${FRAGMENTS_DIR}/.tmux-utf8.zshrc" 2>&1 || echo 'FAILED')"
+      log_debug "Ownership error details: $(chown "${RUNTIME_USER}:${RUNTIME_GROUP}" "${FRAGMENTS_DIR}/.tmux-utf8.zshrc" 2>&1 || echo 'FAILED')"
     fi
 
     if chmod 644 "${FRAGMENTS_DIR}/.tmux-utf8.zshrc" 2>/dev/null; then
@@ -384,9 +409,9 @@ log_debug "Final fragments directory listing: $(ls -la "${FRAGMENTS_DIR}" 2>/dev
 
 # Fix permissions for runtime user (prevents LazyVim permission errors)
 echo "Fixing permissions for runtime user '${RUNTIME_USER}' configuration..."
-run_with_sudo chown -R "${RUNTIME_USER}:${RUNTIME_USER}" "${TARGET_HOME}/.config" 2>/dev/null || true
-run_with_sudo chown -R "${RUNTIME_USER}:${RUNTIME_USER}" "${TARGET_HOME}/.local" 2>/dev/null || true
-run_with_sudo chown -R "${RUNTIME_USER}:${RUNTIME_USER}" "${TARGET_HOME}/.tmux.conf" 2>/dev/null || true
+run_with_sudo chown -R "${RUNTIME_USER}:${RUNTIME_GROUP}" "${TARGET_HOME}/.config" 2>/dev/null || true
+run_with_sudo chown -R "${RUNTIME_USER}:${RUNTIME_GROUP}" "${TARGET_HOME}/.local" 2>/dev/null || true
+run_with_sudo chown -R "${RUNTIME_USER}:${RUNTIME_GROUP}" "${TARGET_HOME}/.tmux.conf" 2>/dev/null || true
 
 # Clean up
 run_with_sudo apt-get clean
