@@ -62,7 +62,7 @@ get_runtime_user() {
 
 # Install newer Neovim version (LazyVim requires >= 0.8.0)
 echo "Installing newer Neovim version for LazyVim compatibility..."
-echo "Version 0.0.4 - Using tarball method for Docker compatibility"
+echo "Version 0.0.9 with fixed line endings and ARM64 support"
 
 # Architecture detection for Neovim tarball
 # (Switched from AppImage to tarball 2026-05-15: FUSE not available in container.
@@ -407,11 +407,37 @@ log_debug "Final fragment file exists: $([ -f "${FRAGMENTS_DIR}/.tmux-utf8.zshrc
 log_debug "Final fragment file details: $(ls -la "${FRAGMENTS_DIR}/.tmux-utf8.zshrc" 2>/dev/null || echo 'NOT FOUND')"
 log_debug "Final fragments directory listing: $(ls -la "${FRAGMENTS_DIR}" 2>/dev/null || echo 'FAILED')"
 
+# ===========================================================================
+# Phase 4: tpm bootstrap + plugin install (makes tmux-resurrect / continuum actually work)
+# ===========================================================================
+TPM_DIR="${TARGET_HOME}/.tmux/plugins/tpm"
+if [ ! -d "$TPM_DIR" ]; then
+    echo "Installing tpm (Tmux Plugin Manager) for ${RUNTIME_USER}..."
+    run_with_sudo -u "${RUNTIME_USER}" git clone --depth 1 https://github.com/tmux-plugins/tpm "$TPM_DIR" 2>&1 || \
+        sudo git clone --depth 1 https://github.com/tmux-plugins/tpm "$TPM_DIR" 2>&1 || \
+        echo "Warning: tpm clone failed (tmux plugins won't load)"
+    run_with_sudo chown -R "${RUNTIME_USER}:${RUNTIME_GROUP}" "${TARGET_HOME}/.tmux" 2>/dev/null || true
+fi
+
+# Install plugins declared in .tmux.conf (headless — no tmux server needed)
+TPM_INSTALL="$TPM_DIR/bin/install_plugins"
+if [ -x "$TPM_INSTALL" ]; then
+    echo "Installing tmux plugins via tpm..."
+    sudo -u "${RUNTIME_USER}" -E HOME="${TARGET_HOME}" "$TPM_INSTALL" 2>&1 || \
+        echo "Warning: tpm install_plugins failed (run 'prefix + I' inside tmux to retry)"
+    run_with_sudo chown -R "${RUNTIME_USER}:${RUNTIME_GROUP}" "${TARGET_HOME}/.tmux" 2>/dev/null || true
+fi
+
+# Ensure NAS-anchored resurrect dir parent exists (the leaf is created at first save).
+# This is harmless if NAS isn't mounted yet — mkdir -p won't fail on non-existent paths above mountpoints.
+sudo -u "${RUNTIME_USER}" mkdir -p "${TARGET_HOME}/.cache/tmux" 2>/dev/null || true
+
 # Fix permissions for runtime user (prevents LazyVim permission errors)
 echo "Fixing permissions for runtime user '${RUNTIME_USER}' configuration..."
 run_with_sudo chown -R "${RUNTIME_USER}:${RUNTIME_GROUP}" "${TARGET_HOME}/.config" 2>/dev/null || true
 run_with_sudo chown -R "${RUNTIME_USER}:${RUNTIME_GROUP}" "${TARGET_HOME}/.local" 2>/dev/null || true
 run_with_sudo chown -R "${RUNTIME_USER}:${RUNTIME_GROUP}" "${TARGET_HOME}/.tmux.conf" 2>/dev/null || true
+run_with_sudo chown -R "${RUNTIME_USER}:${RUNTIME_GROUP}" "${TARGET_HOME}/.tmux" 2>/dev/null || true
 
 # Clean up
 run_with_sudo apt-get clean
